@@ -11,6 +11,8 @@ import {
 
 from "@solana/web3.js"
 
+// CÜZDAN OLUŞTURMA
+
 // Yeni bir cüzdan oluşturuyorum. Bu cüzdanın özel anhtarı
 const privateKey = [228,213,64,112,252,153,80,
     230,43,98,234,227,77,196,111,219,150,139,
@@ -34,3 +36,59 @@ const cikti = async() => {
 }
 
 cikti()
+
+console.log("--------------------------------------------------")
+
+// TRANSFER
+
+/* edaHesap cüzdanından new_Keypair cüzdanına bir transfer yapılacak. 
+Bu transferin ücretini edaHesap cüzdanı ödeyecek.
+*/
+const proccess = async() => {
+    console.log("Cüzdan hesabı => "+edahesap.publicKey.toString())
+    const new_Keypair = Keypair.generate() // Yeni bir anahtar çifti oluşturdum
+
+    console.log("Oluşturulan hesap => "+ new_Keypair.publicKey.toString())
+
+    /* edaHesap cüzdanından new_Keypair cüdanına 1 SOL
+    aktarılır ve yeni bir cüzdan oluşturulur.
+    Oluşturulurkenki işlem ücretini edahesap cüzdanı öder.
+    */
+    const ix = SystemProgram.createAccount({
+        fromPubkey:edahesap.publicKey, //Yapılan işlemin ücretini ödeyen hesap
+        newAccountPubkey:new_Keypair.publicKey, //oluşturduğumuz hesap
+        lamports:LAMPORTS_PER_SOL*1, //transfer miktarı
+        space:0,
+        programId:SystemProgram.programId
+    })
+    
+    //transfer işlemi
+    const ix2 = SystemProgram.transfer({
+        fromPubkey:edahesap.publicKey, //Gönderen hesap
+        toPubkey:new_Keypair.publicKey, //Alıcı hesap
+        lamports:LAMPORTS_PER_SOL*0.2, //Transfer miktarı
+    })
+
+    const Message = new TransactionMessage({
+        instructions:[ix,ix2], //Yapılacak işlemler dizisi
+        payerKey:edahesap.publicKey, // Yapılacak işlem için ödeme yapacak olan hesap
+        recentBlockhash: (await connection.getLatestBlockhash()).blockhash
+    }).compileToLegacyMessage()
+
+    const tx = new VersionedTransaction(Message)
+
+    // Yapılacak işlemi imzalama
+    tx.sign([edahesap,new_Keypair])
+
+    /* İmzalanmış işlem solana ağına gönderilir.
+    Ağın işlemi kabul edip etmediği bir imza ile döner
+    */
+    const signature = await connection.sendTransaction(tx)
+
+    console.log(signature)
+    
+}
+
+proccess()
+
+
